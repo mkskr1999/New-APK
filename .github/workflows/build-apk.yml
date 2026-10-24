@@ -18,42 +18,39 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Create Web App Project Structure
+      - name: Build APK with Direct Android Command Line Tools
         run: |
-          mkdir -p android-app/app/src/main/assets
-          mkdir -p android-app/app/src/main/res/mipmap-hdpi
-          mkdir -p android-app/app/src/main/res/mipmap-mdpi
-          mkdir -p android-app/app/src/main/res/mipmap-xhdpi
-          mkdir -p android-app/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android-app/app/src/main/res/mipmap-xxxhdpi
+          # 1. Download Android Command Line Tools
+          mkdir -p android-sdk/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d android-sdk/cmdline-tools
+          mv android-sdk/cmdline-tools/cmdline-tools android-sdk/cmdline-tools/latest
 
-          # Copy index.html into assets
-          cp www/index.html android-app/app/src/main/assets/index.html
+          export ANDROID_HOME=$PWD/android-sdk
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
 
-          # Create AndroidManifest.xml
-          cat << 'EOF' > android-app/app/src/main/AndroidManifest.xml
+          # Accept SDK licenses automatically
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+          # Install build-tools and platforms
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+          # 2. Create Android Project Structure
+          mkdir -p myapp/app/src/main/assets
+          cp www/index.html myapp/app/src/main/assets/index.html
+
+          # AndroidManifest.xml
+          cat << 'EOF' > myapp/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.nocturne.sleepmusic">
               <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.WAKE_LOCK" />
               <application
                   android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
                   android:label="Nocturne Music"
-                  android:roundIcon="@mipmap/ic_launcher_round"
-                  android:supportsRtl="true"
                   android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity
                       android:name=".MainActivity"
-                      android:exported="true"
-                      android:configChanges="orientation|screenSize|keyboardHidden"
-                      android:windowSoftInputMode="adjustResize">
+                      android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -63,38 +60,33 @@ jobs:
           </manifest>
           EOF
 
-          # Create MainActivity.java
-          mkdir -p android-app/app/src/main/java/com/nocturne/sleepmusic
-          cat << 'EOF' > android-app/app/src/main/java/com/nocturne/sleepmusic/MainActivity.java
+          # MainActivity.java
+          mkdir -p myapp/app/src/main/java/com/nocturne/sleepmusic
+          cat << 'EOF' > myapp/app/src/main/java/com/nocturne/sleepmusic/MainActivity.java
           package com.nocturne.sleepmusic;
-
           import android.app.Activity;
           import android.os.Bundle;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebChromeClient;
-
           public class MainActivity extends Activity {
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  WebView webView = new WebView(this);
-                  WebSettings settings = webView.getSettings();
-                  settings.setJavaScriptEnabled(true);
-                  settings.setDomStorageEnabled(true);
-                  settings.setMediaPlaybackRequiresUserGesture(false);
-                  webView.setWebChromeClient(new WebChromeClient());
-                  webView.loadUrl("file:///android_asset/index.html");
-                  setContentView(webView);
+                  WebView w = new WebView(this);
+                  w.getSettings().setJavaScriptEnabled(true);
+                  w.getSettings().setDomStorageEnabled(true);
+                  w.getSettings().setMediaPlaybackRequiresUserGesture(false);
+                  w.setWebChromeClient(new WebChromeClient());
+                  w.loadUrl("file:///android_asset/index.html");
+                  setContentView(w);
               }
           }
           EOF
 
-          # Create build.gradle
-          cat << 'EOF' > android-app/app/build.gradle
-          plugins {
-              id 'com.android.application'
-          }
+          # build.gradle
+          cat << 'EOF' > myapp/app/build.gradle
+          plugins { id 'com.android.application' }
           android {
               namespace 'com.nocturne.sleepmusic'
               compileSdk 34
@@ -105,54 +97,28 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                  }
-              }
-          }
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
           }
           EOF
 
-          # Create project root build.gradle & settings.gradle
-          cat << 'EOF' > android-app/build.gradle
+          cat << 'EOF' > myapp/build.gradle
           buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.2.2'
-              }
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
           }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          task clean(type: Delete) {
-              delete rootProject.buildDir
-          }
+          allprojects { repositories { google(); mavenCentral() } }
           EOF
 
-          cat << 'EOF' > android-app/settings.gradle
-          rootProject.name = "NocturneMusic"
+          cat << 'EOF' > myapp/settings.gradle
+          rootProject.name = "Nocturne"
           include ':app'
           EOF
 
-          cat << 'EOF' > android-app/gradle.properties
-          android.useAndroidX=true
-          org.gradle.jvmargs=-Xmx2048m
-          EOF
+          echo "android.useAndroidX=true" > myapp/gradle.properties
+          echo "sdk.dir=$PWD/android-sdk" > myapp/local.properties
 
-      - name: Build APK with Gradle
-        run: |
-          cd android-app
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
+          # 3. Build APK
+          cd myapp
+          chmod +x gradlew || gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../Nocturne-Sleep-Music-Signed.apk
 
