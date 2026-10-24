@@ -18,7 +18,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build APK with Sai Music Branding & Upload Support
+      - name: Build APK with Robust Gradle Wrapper
         run: |
           # 1. Download Android Command Line Tools
           mkdir -p android-sdk/cmdline-tools
@@ -40,7 +40,7 @@ jobs:
           mkdir -p myapp/app/src/main/res/mipmap-xxxhdpi
           cp www/index.html myapp/app/src/main/assets/index.html
 
-          # 3. Automatically check and apply custom logo (JPEG or PNG)
+          # 3. Apply Custom Logo (JPEG or PNG)
           if [ -f www/logo.jpg ]; then
             echo "Found custom JPEG logo: logo.jpg"
             cp www/logo.jpg myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
@@ -178,10 +178,14 @@ jobs:
           echo "android.useAndroidX=true" > myapp/gradle.properties
           echo "sdk.dir=$PWD/android-sdk" > myapp/local.properties
 
-          # 4. Compile and Build APK
+          # 4. Compile and Build APK using Gradle 8.5 distribution directly (bypasses CLI wrapper dependency)
           cd myapp
-          chmod +x gradlew || gradle wrapper --gradle-version 8.5
-          ./gradlew assembleDebug
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip -O gradle-8.5.zip
+          unzip -q gradle-8.5.zip
+          export PATH=$PWD/gradle-8.5/bin:$PATH
+
+          gradle init --type basic --automation gradle || true
+          gradle assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../Sai-Music-Signed.apk
 
       - name: Upload APK Artifact
