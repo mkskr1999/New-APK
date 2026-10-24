@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Nocturne — Sleep & Soothing Music</title>
+<title>Sai Music — Sleep & Soothing Sounds</title>
 <style>
   :root {
     --bg: #030303;
@@ -392,7 +392,7 @@
     <div class="brand-logo">
       <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
     </div>
-    <span class="brand-title">Nocturne</span>
+    <span class="brand-title">Sai Music</span>
   </div>
   <div class="header-actions">
     <button class="pill-btn" id="timerBtn" onclick="openTimerModal()">
@@ -442,7 +442,7 @@
   </div>
   <div class="sheet-meta">
     <div class="sheet-title" id="sheetTitle">Midnight Pacific Swell</div>
-    <div class="sheet-artist" id="sheetArtist">Ocean Soundscape • Continuous Sleep Loop</div>
+    <div class="sheet-artist" id="sheetArtist">Sai Music • Soothing Sleep Audio</div>
   </div>
   <div class="volume-row">
     <span>🔈</span>
@@ -673,7 +673,7 @@ function updatePlayerUI() {
   document.getElementById("sheetArt").textContent = currentTrack.icon;
   document.getElementById("sheetArt").style.background = currentTrack.color;
   document.getElementById("sheetTitle").textContent = currentTrack.title;
-  document.getElementById("sheetArtist").textContent = `${currentTrack.category} • Soothing Sleep Audio`;
+  document.getElementById("sheetArtist").textContent = `${currentTrack.category} • Sai Music Sleep Audio`;
   document.getElementById("sheetPlayBtn").textContent = isPlaying ? "⏸" : "▶";
 
   renderTracks();
@@ -786,7 +786,7 @@ function startSleepTimer(minutes) {
       const fadeRatio = remainingSeconds / 15;
       const fadedVol = userVolume * fadeRatio;
       if (masterGain && audioCtx) {
-        masterGain.gain.setValueAtTime(fadedVol, audioCtx.currentTime);
+        masterGain.gain.setValueAtTime(fasedVol = fadedVol, audioCtx.currentTime);
       }
       htmlAudio.volume = fadedVol;
     }
