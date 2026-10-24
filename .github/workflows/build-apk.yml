@@ -18,7 +18,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build APK with Fixed Java File Chooser
+      - name: Build APK with Adaptive Custom Logo & Upload Support
         run: |
           # 1. Download Android Command Line Tools
           mkdir -p android-sdk/cmdline-tools
@@ -33,31 +33,45 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
-          # 2. Create Android Project Structure
+          # 2. Create Android Project Structure & Asset Directories
           mkdir -p myapp/app/src/main/assets
+          mkdir -p myapp/app/src/main/res/mipmap-mdpi
+          mkdir -p myapp/app/src/main/res/mipmap-hdpi
+          mkdir -p myapp/app/src/main/res/mipmap-xhdpi
+          mkdir -p myapp/app/src/main/res/mipmap-xxhdpi
           mkdir -p myapp/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p myapp/app/src/main/res/mipmap-anydpi-v26
+
           cp www/index.html myapp/app/src/main/assets/index.html
 
-          # 3. Apply Custom Logo (Supports logo.jpeg, logo.jpg, or logo.png)
-          if [ -f www/logo.jpeg ]; then
-            echo "Found custom JPEG logo: logo.jpeg"
-            cp www/logo.jpeg myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          elif [ -f www/logo.jpg ]; then
-            echo "Found custom JPEG logo: logo.jpg"
-            cp www/logo.jpg myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          elif [ -f www/logo.png ]; then
+          # 3. Apply Custom PNG Logo across all densities & configure adaptive icon XML
+          if [ -f www/logo.png ]; then
             echo "Found custom PNG logo: logo.png"
+            cp www/logo.png myapp/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            cp www/logo.png myapp/app/src/main/res/mipmap-hdpi/ic_launcher.png
+            cp www/logo.png myapp/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            cp www/logo.png myapp/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
             cp www/logo.png myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            cp www/logo.png myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+
+            cat << 'EOF' > myapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+                <background android:drawable="@mipmap/ic_launcher" />
+                <foreground android:drawable="@mipmap/ic_launcher" />
+            </adaptive-icon>
+            EOF
           else
             echo "No custom logo found, using default styling."
           fi
 
-          # AndroidManifest.xml (Without deprecated package attribute)
+          # AndroidManifest.xml
           cat << 'EOF' > myapp/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
               <application
                   android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
                   android:label="Sai Music"
                   android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity
@@ -73,7 +87,7 @@ jobs:
           </manifest>
           EOF
 
-          # MainActivity.java with Fixed, Clean File Chooser
+          # MainActivity.java with File Chooser Support
           mkdir -p myapp/app/src/main/java/com/saimusic/app
           cat << 'EOF' > myapp/app/src/main/java/com/saimusic/app/MainActivity.java
           package com.saimusic.app;
