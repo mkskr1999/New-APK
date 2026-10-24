@@ -6,18 +6,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-android-apk:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Java JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -26,23 +21,139 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.7'
-
-      - name: Build & Sign v2/v3 Android APK via Cordova
+      - name: Create Web App Project Structure
         run: |
-          npm install -g cordova
-          cordova create app com.nocturne.sleepmusic "Nocturne Music"
-          cp -r www/* app/www/
-          cp config.xml app/config.xml
-          cd app
-          cordova platform add android@13.0.0
-          cordova build android --debug
-          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk ../Nocturne-Sleep-Music-Signed.apk
+          mkdir -p android-app/app/src/main/assets
+          mkdir -p android-app/app/src/main/res/mipmap-hdpi
+          mkdir -p android-app/app/src/main/res/mipmap-mdpi
+          mkdir -p android-app/app/src/main/res/mipmap-xhdpi
+          mkdir -p android-app/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android-app/app/src/main/res/mipmap-xxxhdpi
 
-      - name: Upload Signed APK Artifact
+          # Copy index.html into assets
+          cp www/index.html android-app/app/src/main/assets/index.html
+
+          # Create AndroidManifest.xml
+          cat << 'EOF' > android-app/app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.nocturne.sleepmusic">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="Nocturne Music"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.Material.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # Create MainActivity.java
+          mkdir -p android-app/app/src/main/java/com/nocturne/sleepmusic
+          cat << 'EOF' > android-app/app/src/main/java/com/nocturne/sleepmusic/MainActivity.java
+          package com.nocturne.sleepmusic;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebChromeClient;
+
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  WebView webView = new WebView(this);
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setMediaPlaybackRequiresUserGesture(false);
+                  webView.setWebChromeClient(new WebChromeClient());
+                  webView.loadUrl("file:///android_asset/index.html");
+                  setContentView(webView);
+              }
+          }
+          EOF
+
+          # Create build.gradle
+          cat << 'EOF' > android-app/app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.nocturne.sleepmusic'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.nocturne.sleepmusic"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+          # Create project root build.gradle & settings.gradle
+          cat << 'EOF' > android-app/build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          cat << 'EOF' > android-app/settings.gradle
+          rootProject.name = "NocturneMusic"
+          include ':app'
+          EOF
+
+          cat << 'EOF' > android-app/gradle.properties
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2048m
+          EOF
+
+      - name: Build APK with Gradle
+        run: |
+          cd android-app
+          chmod +x gradlew || true
+          gradle wrapper
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../Nocturne-Sleep-Music-Signed.apk
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Nocturne-Sleep-Music-Signed-APK
