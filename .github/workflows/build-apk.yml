@@ -1,0 +1,49 @@
+name: Build Signed Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Build & Sign v2/v3 Android APK via Cordova
+        run: |
+          npm install -g cordova
+          cordova create app com.nocturne.sleepmusic "Nocturne Music"
+          cp -r www/* app/www/
+          cp config.xml app/config.xml
+          cd app
+          cordova platform add android@13.0.0
+          cordova build android --debug
+          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk ../Nocturne-Sleep-Music-Signed.apk
+
+      - name: Upload Signed APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nocturne-Sleep-Music-Signed-APK
+          path: Nocturne-Sleep-Music-Signed.apk
