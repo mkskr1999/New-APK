@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Nocturne — Sleep & Soothing Music</title>
+<style>
+  :root {
+    --bg: #030303;
+    --surface: #121212;
+    --surface-elevated: #1e1e1e;
+    --surface-chip: rgba(255,255,255,0.1);
+    --text-primary: #ffffff;
+    --text-secondary: #aaaaaa;
+    --accent: #ff0033;
+    --accent-soft: #3ea6ff;
+    --glow-color: #1e3a8a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; user-select: none; }
+  body {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ambient-glow {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 340px;
+    background: radial-gradient(circle at 50% -10%, var(--glow-color), transparent 72%);
+    opacity: 0.55;
+    pointer-events: none;
+    transition: background 0.8s ease;
+    z-index: 0;
+  }
+  header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-logo {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff0033, #ff5500);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(255,0,51,0.45);
+  }
+  .brand-logo svg { width: 18px; height: 18px; fill: #fff; }
+  .brand-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .pill-btn {
+    background: var(--surface-chip);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #fff;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+  }
+  .pill-btn.active-timer {
+    background: rgba(62, 166, 255, 0.22);
+    border-color: #3ea6ff;
+    color: #7cc4ff;
+  }
+  .chips-bar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 6px 16px 12px;
+    scrollbar-width: none;
+  }
+  .chips-bar::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0;
+    background: var(--surface-chip);
+    color: var(--text-primary);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.2s;
+  }
+  .chip.active {
+    background: #ffffff;
+    color: #030303;
+    font-weight: 700;
+  }
+  main {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 16px 140px;
+  }
+  .search-box {
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+  }
+  .search-box input::placeholder { color: #888; }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 8px 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-sub { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
+  .track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .track-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .track-item:active, .track-item.playing {
+    background: rgba(255,255,255,0.1);
+  }
+  .track-art {
+    width: 48px; height: 48px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .track-info { flex: 1; min-width: 0; }
+  .track-name {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .track-item.playing .track-name { color: #3ea6ff; }
+  .track-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .eq-bars {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 16px;
+  }
+  .track-item.playing .eq-bars { display: flex; }
+  .eq-bar {
+    width: 3px;
+    background: #3ea6ff;
+    border-radius: 2px;
+    animation: eqAnim 0.8s infinite ease-in-out alternate;
+  }
+  .eq-bar:nth-child(2) { animation-delay: 0.2s; }
+  .eq-bar:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes eqAnim { 0% { height: 4px; } 100% { height: 16px; } }
+  .mini-player {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #181818;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 10px 14px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
+    cursor: pointer;
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.6);
+  }
+  .mini-art {
+    width: 44px; height: 44px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .mini-info { flex: 1; min-width: 0; }
+  .mini-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mini-sub { font-size: 12px; color: var(--text-secondary); }
+  .mini-controls { display: flex; align-items: center; gap: 6px; }
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .play-fab {
+    background: #ffffff;
+    color: #030303;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: none;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .now-playing-sheet {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, var(--glow-color) 0%, #090909 65%, #030303 100%);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 24px 28px;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .now-playing-sheet.open { transform: translateY(0); }
+  .sheet-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sheet-art-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+  }
+  .sheet-art {
+    width: min(74vw, 290px);
+    height: min(74vw, 290px);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 84px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.65);
+  }
+  .sheet-meta { margin-bottom: 18px; }
+  .sheet-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .sheet-artist { font-size: 14px; color: var(--text-secondary); }
+  .sheet-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin: 14px 0 20px;
+  }
+  .big-play {
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    background: #fff;
+    color: #000;
+    border: none;
+    font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .volume-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .volume-row input[type=range] { flex: 1; accent-color: #fff; }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    z-index: 50;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-card {
+    width: 100%;
+    max-width: 480px;
+    background: #1c1c1c;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .modal-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+  .timer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .timer-opt {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    padding: 12px 8px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+  }
+  .timer-opt.selected {
+    background: #3ea6ff;
+    color: #000;
+    border-color: #3ea6ff;
+  }
+  .custom-timer-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .custom-timer-row input {
+    flex: 1;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 14px;
+  }
+  .btn-primary {
+    background: #fff;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-danger {
+    width: 100%;
+    background: rgba(255, 60, 60, 0.18);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 60, 60, 0.35);
+    padding: 11px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient-glow" id="ambientGlow"></div>
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+    </div>
+    <span class="brand-title">Nocturne</span>
+  </div>
+  <div class="header-actions">
+    <button class="pill-btn" id="timerBtn" onclick="openTimerModal()">
+      <span>🌙</span>
+      <span id="timerBadgeText">Sleep Timer</span>
+    </button>
+    <button class="pill-btn" onclick="document.getElementById('fileUpload').click()">
+      <span>＋ Upload</span>
+    </button>
+    <input type="file" id="fileUpload" accept="audio/*" multiple style="display:none" onchange="handleUpload(event)" />
+  </div>
+</header>
+
+<div class="chips-bar" id="chipsBar"></div>
+
+<main>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search 30 soothing sounds or uploaded tracks..." oninput="renderTracks()" />
+  </div>
+  <div class="section-title">
+    <span id="listHeading">All Sleep Soundscapes (30)</span>
+    <span class="section-sub" id="statusSub">Continuous gapless synthesis</span>
+  </div>
+  <div class="track-list" id="trackList"></div>
+</main>
+
+<div class="mini-player" onclick="openNowPlaying(event)">
+  <div class="mini-art" id="miniArt">🌊</div>
+  <div class="mini-info">
+    <div class="mini-title" id="miniTitle">Midnight Pacific Swell</div>
+    <div class="mini-sub" id="miniSub">Ocean • Tap to expand</div>
+  </div>
+  <div class="mini-controls">
+    <button class="play-fab" id="miniPlayBtn" onclick="togglePlay(event)">▶</button>
+    <button class="icon-btn" onclick="nextTrack(event)">⏭</button>
+  </div>
+</div>
+
+<div class="now-playing-sheet" id="nowPlayingSheet">
+  <div class="sheet-top">
+    <button class="icon-btn" onclick="closeNowPlaying()">⌄</button>
+    <span style="font-size:13px;font-weight:600;color:#ccc;">NOW PLAYING</span>
+    <button class="pill-btn" onclick="openTimerModal()">🌙 <span id="sheetTimerLabel">Timer</span></button>
+  </div>
+  <div class="sheet-art-wrap">
+    <div class="sheet-art" id="sheetArt">🌊</div>
+  </div>
+  <div class="sheet-meta">
+    <div class="sheet-title" id="sheetTitle">Midnight Pacific Swell</div>
+    <div class="sheet-artist" id="sheetArtist">Ocean Soundscape • Continuous Sleep Loop</div>
+  </div>
+  <div class="volume-row">
+    <span>🔈</span>
+    <input type="range" id="volSlider" min="0" max="1" step="0.01" value="0.85" oninput="setMasterVolume(this.value)" />
+    <span>🔊</span>
+  </div>
+  <div class="sheet-controls">
+    <button class="icon-btn" style="font-size:24px" onclick="prevTrack()">⏮</button>
+    <button class="big-play" id="sheetPlayBtn" onclick="togglePlay()">▶</button>
+    <button class="icon-btn" style="font-size:24px" onclick="nextTrack()">⏭</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="timerModal" onclick="if(event.target===this)closeTimerModal()">
+  <div class="modal-card">
+    <div class="modal-title">🌙 Sleep Timer</div>
+    <div class="modal-sub">Automatically fades out audio gently and stops playback when time expires.</div>
+    <div class="timer-grid">
+      <div class="timer-opt" onclick="startSleepTimer(5)">5 min</div>
+      <div class="timer-opt" onclick="startSleepTimer(15)">15 min</div>
+      <div class="timer-opt" onclick="startSleepTimer(30)">30 min</div>
+      <div class="timer-opt" onclick="startSleepTimer(45)">45 min</div>
+      <div class="timer-opt" onclick="startSleepTimer(60)">60 min</div>
+      <div class="timer-opt" onclick="startSleepTimer(90)">90 min</div>
+    </div>
+    <div class="custom-timer-row">
+      <input type="number" id="customMinInput" placeholder="Custom minutes (e.g. 25)" min="1" max="720" />
+      <button class="btn-primary" onclick="startCustomTimer()">Start</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="timer-opt" style="flex:1" onclick="startSleepTimer(0.25)">⚡ 15s Demo Fade</button>
+      <button class="btn-danger" style="flex:1" onclick="cancelSleepTimer()">Turn Off Timer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = ["All", "Ocean", "Rain & Thunder", "Forest", "White Noise", "Space & Drone", "Meditation", "Uploaded"];
+
+const TRACKS = [
+  { id: 1, title: "Midnight Pacific Swell", category: "Ocean", icon: "🌊", color: "#0c4a6e", engine: "ocean", baseFreq: 180, lfo: 0.11 },
+  { id: 2, title: "Gentle Cove Pebbles", category: "Ocean", icon: "🐚", color: "#0369a1", engine: "ocean", baseFreq: 260, lfo: 0.16 },
+  { id: 3, title: "Deep Abyssal Tide", category: "Ocean", icon: "🐋", color: "#1e3a8a", engine: "ocean", baseFreq: 110, lfo: 0.08 },
+  { id: 4, title: "Tropical Lagoon Breeze", category: "Ocean", icon: "🏝️", color: "#0f766e", engine: "ocean", baseFreq: 310, lfo: 0.19 },
+  { id: 5, title: "Starlit Pier Waves", category: "Ocean", icon: "⚓", color: "#1d4ed8", engine: "ocean", baseFreq: 195, lfo: 0.13 },
+  { id: 6, title: "Steady Rain on Skylight", category: "Rain & Thunder", icon: "🌧️", color: "#334155", engine: "rain", baseFreq: 900, lfo: 0.3 },
+  { id: 7, title: "Distant Rolling Thunder", category: "Rain & Thunder", icon: "⛈️", color: "#1e1b4b", engine: "rain", baseFreq: 420, lfo: 0.09 },
+  { id: 8, title: "Misty Windowpane Drizzle", category: "Rain & Thunder", icon: "💧", color: "#3b0764", engine: "rain", baseFreq: 1250, lfo: 0.4 },
+  { id: 9, title: "Canvas Tent Downpour", category: "Rain & Thunder", icon: "⛺", color: "#1f2937", engine: "rain", baseFreq: 640, lfo: 0.22 },
+  { id: 10, title: "Monsoon Veranda Night", category: "Rain & Thunder", icon: "🌩️", color: "#312e81", engine: "rain", baseFreq: 520, lfo: 0.14 },
+  { id: 11, title: "Redwood Canopy Wind", category: "Forest", icon: "🌲", color: "#064e3b", engine: "wind", baseFreq: 340, lfo: 0.15 },
+  { id: 12, title: "Babbling Mountain Brook", category: "Forest", icon: "🏞️", color: "#14532d", engine: "rain", baseFreq: 780, lfo: 0.55 },
+  { id: 13, title: "Bamboo Grove Rustle", category: "Forest", icon: "🎍", color: "#166534", engine: "wind", baseFreq: 480, lfo: 0.24 },
+  { id: 14, title: "Autumn Pine Valley", category: "Forest", icon: "🍂", color: "#365314", engine: "wind", baseFreq: 250, lfo: 0.12 },
+  { id: 15, title: "Warm Woodland Campfire", category: "Forest", icon: "🔥", color: "#7c2d12", engine: "rain", baseFreq: 1100, lfo: 0.7 },
+  { id: 16, title: "Pure Deep Brown Noise", category: "White Noise", icon: "🟫", color: "#451a03", engine: "brown", baseFreq: 160, lfo: 0.04 },
+  { id: 17, title: "Velvet Pink Noise Blanket", category: "White Noise", icon: "🌸", color: "#701a75", engine: "brown", baseFreq: 380, lfo: 0.05 },
+  { id: 18, title: "Box Fan Low Hum", category: "White Noise", icon: "🌀", color: "#27272a", engine: "brown", baseFreq: 210, lfo: 0.07 },
+  { id: 19, title: "First Class Cabin Drone", category: "White Noise", icon: "✈️", color: "#1e293b", engine: "brown", baseFreq: 140, lfo: 0.03 },
+  { id: 20, title: "Soft Celestial Static", category: "White Noise", icon: "✨", color: "#3f3f46", engine: "rain", baseFreq: 1500, lfo: 0.05 },
+  { id: 21, title: "432Hz Deep Delta Sleep", category: "Space & Drone", icon: "🌌", color: "#2e1065", engine: "drone", baseFreq: 108, lfo: 0.06 },
+  { id: 22, title: "Saturn Rings Resonance", category: "Space & Drone", icon: "🪐", color: "#4c1d95", engine: "drone", baseFreq: 96, lfo: 0.05 },
+  { id: 23, title: "Nebula Horizon Pad", category: "Space & Drone", icon: "🌠", color: "#581c87", engine: "drone", baseFreq: 136.1, lfo: 0.08 },
+  { id: 24, title: "Lunar Orbit Weightlessness", category: "Space & Drone", icon: "🌕", color: "#1e1b4b", engine: "drone", baseFreq: 120, lfo: 0.04 },
+  { id: 25, title: "Deep Theta Binaural Calm", category: "Space & Drone", icon: "🧠", color: "#311042", engine: "drone", baseFreq: 144, lfo: 0.07 },
+  { id: 26, title: "Tibetan Singing Sanctuary", category: "Meditation", icon: "🥣", color: "#78350f", engine: "drone", baseFreq: 174, lfo: 0.1 },
+  { id: 27, title: "Kyoto Temple Courtyard", category: "Meditation", icon: "⛩️", color: "#831843", engine: "drone", baseFreq: 216, lfo: 0.12 },
+  { id: 28, title: "528Hz Solfeggio Restoration", category: "Meditation", icon: "🪷", color: "#065f46", engine: "drone", baseFreq: 132, lfo: 0.09 },
+  { id: 29, title: "Himalayan Dawn Harmonic", category: "Meditation", icon: "🏔️", color: "#155e75", engine: "drone", baseFreq: 162, lfo: 0.06 },
+  { id: 30, title: "Zen Garden Night Chimes", category: "Meditation", icon: "🎐", color: "#3730a3", engine: "drone", baseFreq: 192, lfo: 0.14 }
+];
+
+let activeCategory = "All";
+let currentTrack = TRACKS[0];
+let isPlaying = false;
+let audioCtx = null;
+let masterGain = null;
+let activeNodes = [];
+let htmlAudio = new Audio();
+htmlAudio.loop = true;
+let userVolume = 0.85;
+let timerInterval = null;
+let remainingSeconds = 0;
+
+function initChips() {
+  const bar = document.getElementById("chipsBar");
+  bar.innerHTML = CATEGORIES.map(cat =>
+    `<div class="chip ${cat === activeCategory ? 'active' : ''}" onclick="selectCategory('${cat}')">${cat}</div>`
+  ).join("");
+}
+
+function selectCategory(cat) {
+  activeCategory = cat;
+  initChips();
+  renderTracks();
+}
+
+function renderTracks() {
+  const q = document.getElementById("searchInput").value.toLowerCase().trim();
+  const list = document.getElementById("trackList");
+  const filtered = TRACKS.filter(t => {
+    const matchCat = activeCategory === "All" || t.category === activeCategory;
+    const matchQ = !q || t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  document.getElementById("listHeading").textContent =
+    `${activeCategory === 'All' ? 'All Sleep Soundscapes' : activeCategory} (${filtered.length})`;
+
+  list.innerHTML = filtered.map(t => {
+    const playingClass = (isPlaying && currentTrack.id === t.id) ? "playing" : "";
+    return `
+      <div class="track-item ${playingClass}" onclick="playTrackById(${t.id})">
+        <div class="track-art" style="background:${t.color}">${t.icon}</div>
+        <div class="track-info">
+          <div class="track-name">${t.title}</div>
+          <div class="track-meta">${t.category} • Soothing Sleep Audio</div>
+        </div>
+        <div class="eq-bars">
+          <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function ensureAudioContext() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = userVolume;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}
+
+function stopCurrentSynthesis() {
+  activeNodes.forEach(n => {
+    try { if (n.stop) n.stop(); } catch(e){}
+    try { if (n.disconnect) n.disconnect(); } catch(e){}
+  });
+  activeNodes = [];
+  htmlAudio.pause();
+}
+
+function startTrackAudio(track) {
+  stopCurrentSynthesis();
+  if (track.audioUrl) {
+    htmlAudio.src = track.audioUrl;
+    htmlAudio.volume = userVolume;
+    htmlAudio.play().catch(()=>{});
+    return;
+  }
+  ensureAudioContext();
+  masterGain.gain.setValueAtTime(userVolume, audioCtx.currentTime);
+
+  const bufferSize = audioCtx.sampleRate * 4;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+  let lastOut = 0.0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    output[i] = (lastOut + (0.02 * white)) / 1.02;
+    lastOut = output[i];
+    output[i] *= 2.8;
+  }
+
+  const whiteNoise = audioCtx.createBufferSource();
+  whiteNoise.buffer = noiseBuffer;
+  whiteNoise.loop = true;
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = track.engine === "rain" ? "bandpass" : "lowpass";
+  filter.frequency.value = track.baseFreq;
+  filter.Q.value = track.engine === "wind" ? 3.0 : 0.9;
+
+  const lfo = audioCtx.createOscillator();
+  lfo.frequency.value = track.lfo;
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = track.baseFreq * 0.45;
+  lfo.connect(lfoGain);
+  lfoGain.connect(filter.frequency);
+
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = track.engine === "drone" ? 0.18 : 0.65;
+
+  whiteNoise.connect(filter);
+  filter.connect(noiseGain);
+  noiseGain.connect(masterGain);
+
+  whiteNoise.start();
+  lfo.start();
+  activeNodes.push(whiteNoise, lfo, filter, lfoGain, noiseGain);
+
+  if (track.engine === "drone" || track.engine === "ocean") {
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    osc1.type = "sine";
+    osc2.type = "triangle";
+    osc1.frequency.value = track.baseFreq;
+    osc2.frequency.value = track.baseFreq * 1.5;
+
+    const padGain = audioCtx.createGain();
+    padGain.gain.value = track.engine === "drone" ? 0.25 : 0.05;
+
+    osc1.connect(padGain);
+    osc2.connect(padGain);
+    padGain.connect(masterGain);
+
+    osc1.start();
+    osc2.start();
+    activeNodes.push(osc1, osc2, padGain);
+  }
+}
+
+function updatePlayerUI() {
+  document.getElementById("ambientGlow").style.setProperty("--glow-color", currentTrack.color);
+  document.getElementById("nowPlayingSheet").style.setProperty("--glow-color", currentTrack.color);
+
+  document.getElementById("miniArt").textContent = currentTrack.icon;
+  document.getElementById("miniArt").style.background = currentTrack.color;
+  document.getElementById("miniTitle").textContent = currentTrack.title;
+  document.getElementById("miniSub").textContent = `${currentTrack.category} • ${isPlaying ? 'Playing' : 'Paused'}`;
+  document.getElementById("miniPlayBtn").textContent = isPlaying ? "⏸" : "▶";
+
+  document.getElementById("sheetArt").textContent = currentTrack.icon;
+  document.getElementById("sheetArt").style.background = currentTrack.color;
+  document.getElementById("sheetTitle").textContent = currentTrack.title;
+  document.getElementById("sheetArtist").textContent = `${currentTrack.category} • Soothing Sleep Audio`;
+  document.getElementById("sheetPlayBtn").textContent = isPlaying ? "⏸" : "▶";
+
+  renderTracks();
+}
+
+function playTrackById(id) {
+  const found = TRACKS.find(t => t.id === id);
+  if (!found) return;
+  if (currentTrack.id === id && isPlaying) {
+    isPlaying = false;
+    stopCurrentSynthesis();
+  } else {
+    currentTrack = found;
+    isPlaying = true;
+    startTrackAudio(currentTrack);
+  }
+  updatePlayerUI();
+}
+
+function togglePlay(e) {
+  if (e) e.stopPropagation();
+  isPlaying = !isPlaying;
+  if (isPlaying) {
+    startTrackAudio(currentTrack);
+  } else {
+    stopCurrentSynthesis();
+  }
+  updatePlayerUI();
+}
+
+function nextTrack(e) {
+  if (e) e.stopPropagation();
+  const idx = TRACKS.findIndex(t => t.id === currentTrack.id);
+  currentTrack = TRACKS[(idx + 1) % TRACKS.length];
+  isPlaying = true;
+  startTrackAudio(currentTrack);
+  updatePlayerUI();
+}
+
+function prevTrack(e) {
+  if (e) e.stopPropagation();
+  const idx = TRACKS.findIndex(t => t.id === currentTrack.id);
+  currentTrack = TRACKS[(idx - 1 + TRACKS.length) % TRACKS.length];
+  isPlaying = true;
+  startTrackAudio(currentTrack);
+  updatePlayerUI();
+}
+
+function setMasterVolume(val) {
+  userVolume = parseFloat(val);
+  if (masterGain && audioCtx) {
+    masterGain.gain.setValueAtTime(userVolume, audioCtx.currentTime);
+  }
+  htmlAudio.volume = userVolume;
+}
+
+function handleUpload(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  let lastAdded = null;
+  files.forEach(file => {
+    const url = URL.createObjectURL(file);
+    const cleanName = file.name.replace(/\.[^/.]+$/, "");
+    const newTrack = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      title: cleanName,
+      category: "Uploaded",
+      icon: "🎵",
+      color: "#be123c",
+      audioUrl: url
+    };
+    TRACKS.unshift(newTrack);
+    lastAdded = newTrack;
+  });
+  activeCategory = "Uploaded";
+  initChips();
+  if (lastAdded) {
+    currentTrack = lastAdded;
+    isPlaying = true;
+    startTrackAudio(currentTrack);
+  }
+  updatePlayerUI();
+}
+
+function openTimerModal() {
+  document.getElementById("timerModal").classList.add("open");
+}
+function closeTimerModal() {
+  document.getElementById("timerModal").classList.remove("open");
+}
+function startCustomTimer() {
+  const v = parseFloat(document.getElementById("customMinInput").value);
+  if (v && v > 0) startSleepTimer(v);
+}
+
+function startSleepTimer(minutes) {
+  if (timerInterval) clearInterval(timerInterval);
+  remainingSeconds = Math.round(minutes * 60);
+  if (!isPlaying) {
+    isPlaying = true;
+    startTrackAudio(currentTrack);
+    updatePlayerUI();
+  }
+  updateTimerBadges();
+  closeTimerModal();
+
+  timerInterval = setInterval(() => {
+    remainingSeconds--;
+    if (remainingSeconds <= 15 && remainingSeconds > 0) {
+      const fadeRatio = remainingSeconds / 15;
+      const fadedVol = userVolume * fadeRatio;
+      if (masterGain && audioCtx) {
+        masterGain.gain.setValueAtTime(fadedVol, audioCtx.currentTime);
+      }
+      htmlAudio.volume = fadedVol;
+    }
+    if (remainingSeconds <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isPlaying = false;
+      stopCurrentSynthesis();
+      setMasterVolume(userVolume);
+      updateTimerBadges();
+      updatePlayerUI();
+    } else {
+      updateTimerBadges();
+    }
+  }, 1000);
+}
+
+function cancelSleepTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  remainingSeconds = 0;
+  setMasterVolume(userVolume);
+  updateTimerBadges();
+  closeTimerModal();
+}
+
+function updateTimerBadges() {
+  const btn = document.getElementById("timerBtn");
+  const badge = document.getElementById("timerBadgeText");
+  const sheetLbl = document.getElementById("sheetTimerLabel");
+  if (remainingSeconds > 0) {
+    const m = Math.floor(remainingSeconds / 60);
+    const s = remainingSeconds % 60;
+    const fmt = `${m}:${s < 10 ? '0' : ''}${s}`;
+    badge.textContent = fmt;
+    sheetLbl.textContent = fmt;
+    btn.classList.add("active-timer");
+  } else {
+    badge.textContent = "Sleep Timer";
+    sheetLbl.textContent = "Timer";
+    btn.classList.remove("active-timer");
+  }
+}
+
+function openNowPlaying(e) {
+  if (e && (e.target.tagName === "BUTTON")) return;
+  document.getElementById("nowPlayingSheet").classList.add("open");
+}
+function closeNowPlaying() {
+  document.getElementById("nowPlayingSheet").classList.remove("open");
+}
+
+initChips();
+updatePlayerUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.nocturne.sleepmusic" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Nocturne Music</name>
+    <description>YouTube Music Styled Sleep &amp; Soothing Soundscapes with Sleep Timer and Custom Audio Upload</description>
+    <author email="dev@nocturne.app" href="https://nocturne.app">Nocturne Audio Team</author>
+    <content src="index.html" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="Fullscreen" value="false" />
+    <preference name="BackgroundColor" value="0xff030303" />
+    <preference name="Orientation" value="portrait" />
+    <preference name="AndroidXEnabled" value="true" />
+</widget>
