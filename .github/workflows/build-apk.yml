@@ -18,7 +18,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build APK with Direct Android Command Line Tools
+      - name: Build APK with Sai Music Branding & Upload Support
         run: |
           # 1. Download Android Command Line Tools
           mkdir -p android-sdk/cmdline-tools
@@ -37,20 +37,33 @@ jobs:
 
           # 2. Create Android Project Structure
           mkdir -p myapp/app/src/main/assets
+          mkdir -p myapp/app/src/main/res/mipmap-xxxhdpi
           cp www/index.html myapp/app/src/main/assets/index.html
+
+          # 3. Automatically check and apply custom logo (JPEG or PNG)
+          if [ -f www/logo.jpg ]; then
+            echo "Found custom JPEG logo: logo.jpg"
+            cp www/logo.jpg myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          elif [ -f www/logo.png ]; then
+            echo "Found custom PNG logo: logo.png"
+            cp www/logo.png myapp/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          else
+            echo "No custom logo found, using default styling."
+          fi
 
           # AndroidManifest.xml
           cat << 'EOF' > myapp/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.nocturne.sleepmusic">
+              package="com.saimusic.app">
               <uses-permission android:name="android.permission.INTERNET" />
               <application
                   android:allowBackup="true"
-                  android:label="Nocturne Music"
+                  android:label="Sai Music"
                   android:theme="@android:style/Theme.Material.NoActionBar">
                   <activity
                       android:name=".MainActivity"
-                      android:exported="true">
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -60,38 +73,87 @@ jobs:
           </manifest>
           EOF
 
-          # MainActivity.java
-          mkdir -p myapp/app/src/main/java/com/nocturne/sleepmusic
-          cat << 'EOF' > myapp/app/src/main/java/com/nocturne/sleepmusic/MainActivity.java
-          package com.nocturne.sleepmusic;
+          # MainActivity.java with File Chooser Support for Custom Uploads
+          mkdir -p myapp/app/src/main/java/com/saimusic/app
+          cat << 'EOF' > myapp/app/src/main/java/com/saimusic/app/MainActivity.java
+          package com.saimusic.app;
+
           import android.app.Activity;
+          import android.content.Intent;
+          import android.net.Uri;
           import android.os.Bundle;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
-          import android.webkit.WebChromeClient;
+
           public class MainActivity extends Activity {
+              private ValueCallback<Uri[]> uploadMessage;
+              private final static int FILE_CHOOSER_RESULT = 1;
+
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   WebView w = new WebView(this);
-                  w.getSettings().setJavaScriptEnabled(true);
-                  w.getSettings().setDomStorageEnabled(true);
-                  w.getSettings().setMediaPlaybackRequiresUserGesture(false);
-                  w.setWebChromeClient(new WebChromeClient());
+                  WebSettings settings = w.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setMediaPlaybackRequiresUserGesture(false);
+
+                  w.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                          if (uploadMessage != null) {
+                              uploadMessage.onReceiveValue(null);
+                          }
+                          uploadMessage = filePathCallback;
+                          Intent intent = fileChooserParams.createIntent();
+                          try {
+                              startActivityForResult(intent, FILE_CHOOSER_RESULT);
+                          } catch (Exception e) {
+                              uploadMessage = null;
+                              return false;
+                          }
+                          return true;
+                      }
+                  });
+
                   w.loadUrl("file:///android_asset/index.html");
                   setContentView(w);
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+                  if (requestCode == FILE_CHOOSER_RESULT) {
+                      if (uploadMessage == null) return;
+                      Uri[] results = null;
+                      if (resultCode == RESULT_OK && intent != null) {
+                          String dataString = intent.getDataString();
+                          if (dataString != null) {
+                              results = new Uri[]{Uri.parse(dataString)};
+                          } else if (intent.getClipData() != null) {
+                              int count = intent.getItemCount();
+                              results = new Uri[count];
+                              for (int i = 0; i < count; i++) {
+                                  results[i] = intent.getClipData().getItemAt(i).getUri();
+                              }
+                          }
+                      }
+                      uploadMessage.onReceiveValue(results);
+                      uploadMessage = null;
+                  }
               }
           }
           EOF
 
-          # build.gradle
+          # build.gradle configuration
           cat << 'EOF' > myapp/app/build.gradle
           plugins { id 'com.android.application' }
           android {
-              namespace 'com.nocturne.sleepmusic'
+              namespace 'com.saimusic.app'
               compileSdk 34
               defaultConfig {
-                  applicationId "com.nocturne.sleepmusic"
+                  applicationId "com.saimusic.app"
                   minSdk 21
                   targetSdk 34
                   versionCode 1
@@ -109,21 +171,21 @@ jobs:
           EOF
 
           cat << 'EOF' > myapp/settings.gradle
-          rootProject.name = "Nocturne"
+          rootProject.name = "SaiMusic"
           include ':app'
           EOF
 
           echo "android.useAndroidX=true" > myapp/gradle.properties
           echo "sdk.dir=$PWD/android-sdk" > myapp/local.properties
 
-          # 3. Build APK
+          # 4. Compile and Build APK
           cd myapp
           chmod +x gradlew || gradle wrapper --gradle-version 8.5
           ./gradlew assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk ../Nocturne-Sleep-Music-Signed.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../Sai-Music-Signed.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nocturne-Sleep-Music-Signed-APK
-          path: Nocturne-Sleep-Music-Signed.apk
+          name: Sai-Music-Signed-APK
+          path: Sai-Music-Signed.apk
